@@ -98,6 +98,8 @@ twinkle.allowPrereleases = true
 twinkle.ignoreVersion("2.0.0")
 ```
 
-## License
+## Requirements
 
-MIT
+- **Code signing must match** - The downloaded app must be signed with the same identity as the running app
+- **Version must increment** - New releases need a higher semver (e.g., `v1.0.0` → `v1.1.0`)
+- **Include a `.zip` asset** - Releases without a `.zip` file are ignored
