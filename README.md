@@ -6,7 +6,7 @@
 
 A lightweight auto-updater for macOS apps that checks GitHub releases for updates.
     
-[![CI](https://github.com/Aayush9029/Twinkle/actions/workflows/ci.yml/badge.svg)](https://github.com/Aayush9029/Twinkle/actions/workflows/ci.yml)
+[![CI](https://github.com/Aayush9029/twinkle/actions/workflows/ci.yml/badge.svg)](https://github.com/Aayush9029/twinkle/actions/workflows/ci.yml)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?logo=apple)
 ![Swift 6](https://img.shields.io/badge/Swift-6-orange?logo=swift)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -19,7 +19,7 @@ Add Twinkle to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Aayush9029/Twinkle.git", from: "1.0.0")
+    .package(url: "https://github.com/Aayush9029/twinkle.git", from: "1.0.0")
 ]
 ```
 
