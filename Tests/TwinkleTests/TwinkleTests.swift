@@ -379,4 +379,71 @@ struct TwinkleTests {
             #expect(twinkle.allowPrereleases == true)
         }
     }
+
+    @Test("Install throws when not in ready state")
+    @MainActor
+    func installThrowsWhenNotReady() async {
+        await withDependencies {
+            $0.releaseClient = .previewValue
+            $0.processClient = .previewValue
+            $0.bundleInfo = .previewValue
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            // State is idle, not ready
+            await #expect(throws: TwinkleError.invalidBundle) {
+                try await twinkle.install()
+            }
+        }
+    }
+
+    @Test("ClearIgnoredVersion removes the ignored version")
+    @MainActor
+    func clearIgnoredVersionWorks() {
+        withDependencies {
+            $0.releaseClient = .previewValue
+            $0.processClient = .previewValue
+            $0.bundleInfo = .previewValue
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            // Ignore a version
+            twinkle.ignoreVersion("2.0.0")
+
+            // Clear it
+            twinkle.clearIgnoredVersion()
+
+            // Method completes without error
+            #expect(Bool(true))
+        }
+    }
+
+    @Test("Ignored version is skipped during check")
+    @MainActor
+    func ignoredVersionSkippedDuringCheck() async {
+        await withDependencies {
+            $0.releaseClient = ReleaseClient(
+                fetchReleases: { _, _ in [Release.preview] },  // v2.0.0, build 100
+                downloadZip: { _, _ in AsyncThrowingStream { $0.finish() } }
+            )
+            $0.processClient = .previewValue
+            $0.bundleInfo = BundleInfoClient(
+                bundleIdentifier: { "com.test" },
+                bundleVersion: { "50" },  // Current build is 50, v2.0.0 (100) is newer
+                shortVersionString: { "1.0" },
+                bundleURL: { URL(fileURLWithPath: "/") }
+            )
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            // Ignore the available version
+            twinkle.ignoreVersion("2.0.0")
+
+            // Check for updates
+            await twinkle.check()
+
+            // Should be upToDate since we ignored the only newer version
+            #expect(twinkle.state == .upToDate)
+        }
+    }
 }

@@ -47,7 +47,6 @@ extension GitHubRelease {
             buildNumber: buildNumber,
             version: version,
             changelog: body ?? "",
-            bannerImageUrl: extractFirstImage(from: body),
             zipUrl: zipAsset.browserDownloadUrl,
             prerelease: prerelease,
             publishedAt: publishedAt
@@ -74,36 +73,5 @@ extension GitHubRelease {
         let patch = components.count > 2 ? components[2] : 0
 
         return major * 10000 + minor * 100 + patch
-    }
-
-    /// Extracts the first markdown image URL from the body
-    /// Looks for patterns like ![alt](url) or <img src="url">
-    private func extractFirstImage(from body: String?) -> URL? {
-        guard let body = body else { return nil }
-
-        // Match markdown image: ![...](url)
-        let markdownPattern = #"!\[.*?\]\((https?://[^\s\)]+)\)"#
-        if let match = body.range(of: markdownPattern, options: .regularExpression),
-           let urlStart = body[match].range(of: "(http"),
-           let urlEnd = body[match].range(of: ")", range: urlStart.lowerBound..<body[match].endIndex) {
-            let urlString = String(body[urlStart.lowerBound..<urlEnd.lowerBound]).dropFirst()
-            return URL(string: String(urlString))
-        }
-
-        // Match HTML img tag: <img src="url">
-        let htmlPattern = #"<img[^>]+src=[\"'](https?://[^\"']+)[\"']"#
-        if let match = body.range(of: htmlPattern, options: .regularExpression) {
-            let matchedString = String(body[match])
-            if let srcStart = matchedString.range(of: "src="),
-               let quote = matchedString[srcStart.upperBound...].first,
-               (quote == "\"" || quote == "'") {
-                let afterQuote = matchedString.index(after: srcStart.upperBound)
-                if let endQuote = matchedString[afterQuote...].firstIndex(of: quote) {
-                    return URL(string: String(matchedString[afterQuote..<endQuote]))
-                }
-            }
-        }
-
-        return nil
     }
 }

@@ -7,7 +7,6 @@ public struct Release: Identifiable, Codable, Sendable, Hashable {
     public let buildNumber: Int
     public let version: String
     public let changelog: String
-    public let bannerImageUrl: URL?
     public let zipUrl: URL
     public let prerelease: Bool
     public let publishedAt: Date?
@@ -18,7 +17,6 @@ public struct Release: Identifiable, Codable, Sendable, Hashable {
         buildNumber: Int,
         version: String,
         changelog: String,
-        bannerImageUrl: URL? = nil,
         zipUrl: URL,
         prerelease: Bool,
         publishedAt: Date? = nil
@@ -26,7 +24,6 @@ public struct Release: Identifiable, Codable, Sendable, Hashable {
         self.buildNumber = buildNumber
         self.version = version
         self.changelog = changelog
-        self.bannerImageUrl = bannerImageUrl
         self.zipUrl = zipUrl
         self.prerelease = prerelease
         self.publishedAt = publishedAt

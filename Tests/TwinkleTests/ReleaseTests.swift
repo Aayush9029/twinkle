@@ -100,21 +100,6 @@ struct ReleaseTests {
         #expect(githubRelease.toRelease() == nil)
     }
 
-    @Test("Extracts banner image from markdown body")
-    func extractsBannerImage() throws {
-        let json = """
-        {
-            "tag_name": "v1.0.0",
-            "body": "# Release\\n![Banner](https://example.com/banner.png)\\nMore text",
-            "prerelease": false,
-            "assets": [{"name": "a.zip", "browser_download_url": "https://x.com/a.zip"}]
-        }
-        """
-        let githubRelease = try JSONDecoder().decode(GitHubRelease.self, from: json.data(using: .utf8)!)
-        let release = githubRelease.toRelease()!
-        #expect(release.bannerImageUrl == URL(string: "https://example.com/banner.png"))
-    }
-
     @Test("Encodes and decodes round-trip")
     func roundTrip() throws {
         let original = Release.preview
