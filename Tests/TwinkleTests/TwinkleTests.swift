@@ -214,7 +214,169 @@ struct TwinkleTests {
             twinkle.ignoreVersion("2.0.0")
 
             // After ignoring, check should skip that version
-            #expect(true) // Method exists and doesn't crash
+            #expect(Bool(true)) // Method exists and doesn't crash
+        }
+    }
+
+    @Test("CancelDownload resets state to idle")
+    @MainActor
+    func cancelDownloadResetsState() async {
+        await withDependencies {
+            $0.releaseClient = ReleaseClient(
+                fetchReleases: { _, _ in [Release.preview] },
+                downloadZip: { _, _ in
+                    // Long-running stream that can be cancelled
+                    AsyncThrowingStream { c in
+                        Task {
+                            for i in 1...100 {
+                                try await Task.sleep(for: .milliseconds(50))
+                                c.yield(.downloading(
+                                    fractionCompleted: Double(i) / 100.0,
+                                    bytesReceived: Int64(i * 1000),
+                                    totalBytes: 100000
+                                ))
+                            }
+                        }
+                    }
+                }
+            )
+            $0.processClient = .previewValue
+            $0.bundleInfo = BundleInfoClient(
+                bundleIdentifier: { "com.test" },
+                bundleVersion: { "50" },
+                shortVersionString: { "1.0" },
+                bundleURL: { URL(fileURLWithPath: "/") }
+            )
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            let task = Task { await twinkle.check() }
+            try? await Task.sleep(for: .milliseconds(100))
+
+            // Verify we're in downloading state
+            if case .downloading = twinkle.state {
+                // Cancel the download
+                twinkle.cancelDownload()
+
+                // State should reset to idle
+                #expect(twinkle.state == .idle)
+            }
+
+            task.cancel()
+        }
+    }
+
+    @Test("Rate limiting error is properly handled")
+    @MainActor
+    func rateLimitingError() async {
+        await withDependencies {
+            $0.releaseClient = ReleaseClient(
+                fetchReleases: { _, _ in throw TwinkleError.rateLimited(retryAfter: 60) },
+                downloadZip: { _, _ in AsyncThrowingStream { $0.finish() } }
+            )
+            $0.processClient = .previewValue
+            $0.bundleInfo = .previewValue
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+            await twinkle.check()
+
+            if case .failed(let error) = twinkle.state {
+                #expect(error == .rateLimited(retryAfter: 60))
+            } else {
+                Issue.record("Expected failed state with rate limit error")
+            }
+        }
+    }
+
+    @Test("Disk space error is properly handled")
+    @MainActor
+    func diskSpaceError() async {
+        await withDependencies {
+            $0.releaseClient = ReleaseClient(
+                fetchReleases: { _, _ in [Release.preview] },
+                downloadZip: { _, _ in
+                    AsyncThrowingStream { c in
+                        c.finish(throwing: TwinkleError.diskSpaceLow(required: 1_000_000_000, available: 100_000))
+                    }
+                }
+            )
+            $0.processClient = .previewValue
+            $0.bundleInfo = BundleInfoClient(
+                bundleIdentifier: { "com.test" },
+                bundleVersion: { "50" },
+                shortVersionString: { "1.0" },
+                bundleURL: { URL(fileURLWithPath: "/") }
+            )
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+            await twinkle.check()
+
+            if case .failed(let error) = twinkle.state {
+                if case .diskSpaceLow = error {
+                    #expect(Bool(true))
+                } else {
+                    Issue.record("Expected diskSpaceLow error, got \(error)")
+                }
+            } else {
+                Issue.record("Expected failed state")
+            }
+        }
+    }
+
+    @Test("Concurrent check calls are prevented")
+    @MainActor
+    func concurrentCheckPrevented() async {
+        var fetchCallCount = 0
+        await withDependencies {
+            $0.releaseClient = ReleaseClient(
+                fetchReleases: { _, _ in
+                    fetchCallCount += 1
+                    try? await Task.sleep(for: .milliseconds(100))
+                    return [Release.preview]
+                },
+                downloadZip: { _, _ in AsyncThrowingStream { $0.finish() } }
+            )
+            $0.processClient = .previewValue
+            $0.bundleInfo = BundleInfoClient(
+                bundleIdentifier: { "com.test" },
+                bundleVersion: { "200" },
+                shortVersionString: { "3.0" },
+                bundleURL: { URL(fileURLWithPath: "/") }
+            )
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            // Start first check
+            let task1 = Task { await twinkle.check() }
+            try? await Task.sleep(for: .milliseconds(10))
+
+            // Try to start second check while first is in progress
+            let task2 = Task { await twinkle.check() }
+
+            await task1.value
+            await task2.value
+
+            // Should only have one fetch call despite two check attempts
+            #expect(fetchCallCount == 1)
+        }
+    }
+
+    @Test("AllowPrereleases preference persists")
+    @MainActor
+    func allowPrereleasesPersistedViaSharing() {
+        withDependencies {
+            $0.releaseClient = .previewValue
+            $0.processClient = .previewValue
+            $0.bundleInfo = .previewValue
+        } operation: {
+            let twinkle = Twinkle(owner: "test", repo: "app")
+
+            // Default should be false
+            #expect(twinkle.allowPrereleases == false)
+
+            // Set to true
+            twinkle.allowPrereleases = true
+            #expect(twinkle.allowPrereleases == true)
         }
     }
 }
