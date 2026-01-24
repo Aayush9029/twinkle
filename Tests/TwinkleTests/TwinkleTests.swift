@@ -695,7 +695,14 @@ struct TwinkleTests {
             let twinkle = Twinkle(owner: "test", repo: "app")
 
             let task = Task { await twinkle.check() }
-            try? await Task.sleep(for: .milliseconds(50))
+
+            // Wait for releases to be populated
+            for _ in 0..<20 {
+                try? await Task.sleep(for: .milliseconds(10))
+                if !twinkle.releases.isEmpty {
+                    break
+                }
+            }
 
             // With nil version (defaults to 0), release 100 should be available
             #expect(twinkle.releases.count == 1)
