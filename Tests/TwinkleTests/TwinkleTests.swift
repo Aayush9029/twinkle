@@ -30,7 +30,7 @@ struct TwinkleTests {
                 downloadZip: { _, _ in
                     // Stream that emits progress but never completes
                     AsyncThrowingStream { c in
-                        c.yield(.downloading(fractionCompleted: 0.5))
+                        c.yield(.downloading(fractionCompleted: 0.5, bytesReceived: 500, totalBytes: 1000))
                         // Don't finish - test will check state during download
                     }
                 }
@@ -112,7 +112,7 @@ struct TwinkleTests {
                 fetchReleases: { _, _ in [Release.preview, Release.previewBeta] },
                 downloadZip: { _, _ in
                     AsyncThrowingStream { c in
-                        c.yield(.downloading(fractionCompleted: 0.1))
+                        c.yield(.downloading(fractionCompleted: 0.1, bytesReceived: 100, totalBytes: 1000))
                     }
                 }
             )
@@ -153,7 +153,7 @@ struct TwinkleTests {
                 fetchReleases: { _, _ in [Release.preview, Release.previewBeta] },
                 downloadZip: { _, _ in
                     AsyncThrowingStream { c in
-                        c.yield(.downloading(fractionCompleted: 0.1))
+                        c.yield(.downloading(fractionCompleted: 0.1, bytesReceived: 100, totalBytes: 1000))
                     }
                 }
             )

@@ -11,8 +11,18 @@ extension ReleaseClient: DependencyKey {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw TwinkleError.networkError(.badServerResponse)
+            }
+
+            // Handle rate limiting
+            if httpResponse.statusCode == 429 {
+                let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap { Int($0) }
+                throw TwinkleError.rateLimited(retryAfter: retryAfter)
+            }
+
+            guard (200..<300).contains(httpResponse.statusCode) else {
                 throw TwinkleError.networkError(.badServerResponse)
             }
 
@@ -27,40 +37,83 @@ extension ReleaseClient: DependencyKey {
 
         downloadZip: { url, destination in
             AsyncThrowingStream { continuation in
-                let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
-                    if let error = error {
-                        continuation.finish(throwing: error)
-                        return
-                    }
+                // First, make a HEAD request to get content length for disk space check
+                var headRequest = URLRequest(url: url)
+                headRequest.httpMethod = "HEAD"
 
-                    guard let tempURL = tempURL else {
-                        continuation.finish(throwing: TwinkleError.downloadFailed("No file received"))
-                        return
-                    }
-
+                Task {
                     do {
-                        try? FileManager.default.removeItem(at: destination)
-                        try FileManager.default.moveItem(at: tempURL, to: destination)
-                        continuation.yield(.completed(savedTo: destination))
-                        continuation.finish()
+                        let (_, headResponse) = try await URLSession.shared.data(for: headRequest)
+                        if let httpResponse = headResponse as? HTTPURLResponse,
+                           let contentLengthStr = httpResponse.value(forHTTPHeaderField: "Content-Length"),
+                           let contentLength = Int64(contentLengthStr) {
+
+                            // Check available disk space (need ~2x for download + extraction)
+                            let requiredSpace = contentLength * 3  // Safety margin for extraction
+                            if let availableSpace = try? availableDiskSpace(),
+                               availableSpace < requiredSpace {
+                                continuation.finish(throwing: TwinkleError.diskSpaceLow(
+                                    required: requiredSpace,
+                                    available: availableSpace
+                                ))
+                                return
+                            }
+                        }
                     } catch {
-                        continuation.finish(throwing: error)
+                        // If HEAD fails, proceed anyway - download will fail if space is truly insufficient
                     }
-                }
 
-                let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
-                    continuation.yield(.downloading(fractionCompleted: progress.fractionCompleted))
-                }
+                    // Proceed with download
+                    let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+                        if let error = error as? URLError, error.code == .cancelled {
+                            continuation.finish(throwing: TwinkleError.downloadCancelled)
+                            return
+                        }
 
-                continuation.onTermination = { _ in
-                    observation.invalidate()
-                    task.cancel()
-                }
+                        if let error = error {
+                            continuation.finish(throwing: TwinkleError.downloadFailed(error.localizedDescription))
+                            return
+                        }
 
-                task.resume()
+                        guard let tempURL = tempURL else {
+                            continuation.finish(throwing: TwinkleError.downloadFailed("No file received"))
+                            return
+                        }
+
+                        do {
+                            try? FileManager.default.removeItem(at: destination)
+                            try FileManager.default.moveItem(at: tempURL, to: destination)
+                            continuation.yield(.completed(savedTo: destination))
+                            continuation.finish()
+                        } catch {
+                            continuation.finish(throwing: error)
+                        }
+                    }
+
+                    let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+                        continuation.yield(.downloading(
+                            fractionCompleted: progress.fractionCompleted,
+                            bytesReceived: progress.completedUnitCount,
+                            totalBytes: progress.totalUnitCount
+                        ))
+                    }
+
+                    continuation.onTermination = { _ in
+                        observation.invalidate()
+                        task.cancel()
+                    }
+
+                    task.resume()
+                }
             }
         }
     )
+
+    private static func availableDiskSpace() throws -> Int64 {
+        let fileURL = FileManager.default.temporaryDirectory
+        let values = try fileURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return values.volumeAvailableCapacityForImportantUsage ?? 0
+    }
 
     public static let previewValue = ReleaseClient(
         fetchReleases: { _, _ in
@@ -69,9 +122,15 @@ extension ReleaseClient: DependencyKey {
         downloadZip: { _, destination in
             AsyncThrowingStream { continuation in
                 Task {
+                    let totalBytes: Int64 = 10_000_000  // 10 MB mock download
                     for i in 1...10 {
                         try await Task.sleep(for: .milliseconds(100))
-                        continuation.yield(.downloading(fractionCompleted: Double(i) / 10.0))
+                        let bytesReceived = Int64(i) * 1_000_000
+                        continuation.yield(.downloading(
+                            fractionCompleted: Double(i) / 10.0,
+                            bytesReceived: bytesReceived,
+                            totalBytes: totalBytes
+                        ))
                     }
                     continuation.yield(.completed(savedTo: destination))
                     continuation.finish()

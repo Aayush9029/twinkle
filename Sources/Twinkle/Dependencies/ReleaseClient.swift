@@ -19,8 +19,16 @@ public struct ReleaseClient: Sendable {
 }
 
 public enum DownloadProgress: Sendable, Equatable {
-    case downloading(fractionCompleted: Double)
+    case downloading(fractionCompleted: Double, bytesReceived: Int64, totalBytes: Int64)
     case completed(savedTo: URL)
+
+    /// Convenience for simple fraction access
+    public var fractionCompleted: Double {
+        switch self {
+        case .downloading(let fraction, _, _): fraction
+        case .completed: 1.0
+        }
+    }
 }
 
 extension DependencyValues {

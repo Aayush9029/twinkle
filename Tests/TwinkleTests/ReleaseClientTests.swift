@@ -67,7 +67,20 @@ struct ReleaseClientTests {
 
     @Test("DownloadProgress equality")
     func downloadProgressEquality() {
-        #expect(DownloadProgress.downloading(fractionCompleted: 0.5) == DownloadProgress.downloading(fractionCompleted: 0.5))
-        #expect(DownloadProgress.downloading(fractionCompleted: 0.5) != DownloadProgress.downloading(fractionCompleted: 0.7))
+        let p1 = DownloadProgress.downloading(fractionCompleted: 0.5, bytesReceived: 500, totalBytes: 1000)
+        let p2 = DownloadProgress.downloading(fractionCompleted: 0.5, bytesReceived: 500, totalBytes: 1000)
+        let p3 = DownloadProgress.downloading(fractionCompleted: 0.7, bytesReceived: 700, totalBytes: 1000)
+
+        #expect(p1 == p2)
+        #expect(p1 != p3)
+    }
+
+    @Test("DownloadProgress provides fraction convenience")
+    func downloadProgressFraction() {
+        let downloading = DownloadProgress.downloading(fractionCompleted: 0.5, bytesReceived: 500, totalBytes: 1000)
+        let completed = DownloadProgress.completed(savedTo: URL(fileURLWithPath: "/tmp/test.zip"))
+
+        #expect(downloading.fractionCompleted == 0.5)
+        #expect(completed.fractionCompleted == 1.0)
     }
 }

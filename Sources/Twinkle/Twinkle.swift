@@ -111,7 +111,7 @@ public final class Twinkle {
 
         for try await progress in releaseClient.downloadZip(release.zipUrl, downloadPath) {
             switch progress {
-            case .downloading(let fraction):
+            case .downloading(let fraction, _, _):
                 state = .downloading(release, progress: fraction)
 
             case .completed(let savedTo):
