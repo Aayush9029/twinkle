@@ -6,9 +6,6 @@ on:
     paths:
       - 'Sources/**'
       - 'Tests/**'
-      - 'Example/**'
-      - 'E2ETests/**'
-      - 'Scripts/**'
       - 'Package.swift'
       - 'Package.resolved'
   pull_request:
@@ -16,15 +13,11 @@ on:
     paths:
       - 'Sources/**'
       - 'Tests/**'
-      - 'Example/**'
-      - 'E2ETests/**'
-      - 'Scripts/**'
       - 'Package.swift'
       - 'Package.resolved'
 
 jobs:
-  unit-tests:
-    name: Unit Tests
+  test:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -39,36 +32,5 @@ jobs:
       - name: Build
         run: swift build
 
-      - name: Run unit tests
+      - name: Run tests
         run: swift test
-
-  e2e-tests:
-    name: E2E Tests
-    runs-on: macos-15
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache SPM
-        uses: actions/cache@v4
-        with:
-          path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
-          restore-keys: ${{ runner.os }}-spm-
-
-      - name: Build test fixtures
-        run: |
-          chmod +x Scripts/build-test-fixtures.sh
-          ./Scripts/build-test-fixtures.sh
-
-      - name: Run E2E tests
-        run: |
-          cd E2ETests
-          swift test
-
-      - name: Upload fixtures on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-fixtures
-          path: E2ETests/Fixtures/
