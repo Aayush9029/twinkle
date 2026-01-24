@@ -133,7 +133,14 @@ struct TwinkleTests {
             twinkle.allowPrereleases = false
 
             let task = Task { await twinkle.check() }
-            try? await Task.sleep(for: .milliseconds(50))
+
+            // Wait for releases to be populated
+            for _ in 0..<20 {
+                try? await Task.sleep(for: .milliseconds(10))
+                if !twinkle.releases.isEmpty {
+                    break
+                }
+            }
 
             // Should be downloading stable release (100), not beta (101)
             if case .downloading(let release, _) = twinkle.state {
@@ -142,7 +149,7 @@ struct TwinkleTests {
             } else if case .available(let release) = twinkle.state {
                 #expect(release.version == "2.0.0")
             } else {
-                // Release was found
+                // Releases should be populated
                 #expect(twinkle.releases.contains { $0.version == "2.0.0" })
             }
 
@@ -174,7 +181,14 @@ struct TwinkleTests {
             twinkle.allowPrereleases = true
 
             let task = Task { await twinkle.check() }
-            try? await Task.sleep(for: .milliseconds(50))
+
+            // Wait for releases to be populated
+            for _ in 0..<20 {
+                try? await Task.sleep(for: .milliseconds(10))
+                if !twinkle.releases.isEmpty {
+                    break
+                }
+            }
 
             // Should be downloading beta release (101) as highest
             if case .downloading(let release, _) = twinkle.state {
@@ -183,7 +197,7 @@ struct TwinkleTests {
             } else if case .available(let release) = twinkle.state {
                 #expect(release.version == "2.1.0-beta")
             } else {
-                // Release was found
+                // Releases should be populated
                 #expect(twinkle.releases.contains { $0.version == "2.1.0-beta" })
             }
 
