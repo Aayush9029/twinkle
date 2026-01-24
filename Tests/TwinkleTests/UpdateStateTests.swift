@@ -39,4 +39,14 @@ struct UpdateStateTests {
         #expect(UpdateState.available(.preview) != UpdateState.available(.preview2))
         #expect(UpdateState.downloading(.preview, progress: 0.5) != UpdateState.downloading(.preview, progress: 0.7))
     }
+
+    @Test("upToDate has no release")
+    func upToDateNoRelease() {
+        #expect(UpdateState.upToDate.release == nil)
+    }
+
+    @Test("installing has no release")
+    func installingNoRelease() {
+        #expect(UpdateState.installing.release == nil)
+    }
 }

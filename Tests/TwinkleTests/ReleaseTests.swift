@@ -155,4 +155,82 @@ struct ReleaseTests {
         #expect(Release.preview2.buildNumber == 99)
         #expect(Release.previewBeta.buildNumber == 101)
     }
+
+    @Test("Decodes with null optional fields")
+    func decodeWithNulls() throws {
+        let json = """
+        {
+            "tag_name": "v1.0.0",
+            "name": null,
+            "body": null,
+            "prerelease": false,
+            "published_at": null,
+            "assets": [{"name": "app.zip", "browser_download_url": "https://x.com/a.zip"}]
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let githubRelease = try decoder.decode(GitHubRelease.self, from: json.data(using: .utf8)!)
+        let release = githubRelease.toRelease()!
+
+        #expect(release.version == "1.0.0")
+        #expect(release.changelog == "")
+        #expect(release.publishedAt == nil)
+    }
+
+    @Test("Tag without v prefix works")
+    func tagWithoutV() throws {
+        let json = """
+        {"tag_name": "2.5.0", "prerelease": false, "assets": [{"name": "a.zip", "browser_download_url": "https://x.com/a.zip"}]}
+        """
+        let githubRelease = try JSONDecoder().decode(GitHubRelease.self, from: json.data(using: .utf8)!)
+        let release = githubRelease.toRelease()!
+
+        #expect(release.version == "2.5.0")
+        #expect(release.buildNumber == 20500)
+    }
+
+    @Test("Multiple assets picks first zip")
+    func multipleAssets() throws {
+        let json = """
+        {
+            "tag_name": "v1.0.0",
+            "prerelease": false,
+            "assets": [
+                {"name": "source.tar.gz", "browser_download_url": "https://x.com/source.tar.gz"},
+                {"name": "app.zip", "browser_download_url": "https://x.com/first.zip"},
+                {"name": "debug.zip", "browser_download_url": "https://x.com/second.zip"}
+            ]
+        }
+        """
+        let githubRelease = try JSONDecoder().decode(GitHubRelease.self, from: json.data(using: .utf8)!)
+        let release = githubRelease.toRelease()!
+
+        #expect(release.zipUrl == URL(string: "https://x.com/first.zip")!)
+    }
+
+    @Test("Empty assets returns nil")
+    func emptyAssets() throws {
+        let json = """
+        {"tag_name": "v1.0.0", "prerelease": false, "assets": []}
+        """
+        let githubRelease = try JSONDecoder().decode(GitHubRelease.self, from: json.data(using: .utf8)!)
+        #expect(githubRelease.toRelease() == nil)
+    }
+
+    @Test("Releases are hashable")
+    func hashable() {
+        var set: Set<Release> = []
+        set.insert(Release.preview)
+        set.insert(Release.preview)  // Duplicate
+        set.insert(Release.preview2)
+
+        #expect(set.count == 2)
+    }
+
+    @Test("Kind returns stable for non-prerelease")
+    func kindStable() {
+        #expect(Release.preview.kind == .stable(Release.preview.zipUrl))
+        #expect(Release.preview.prerelease == false)
+    }
 }

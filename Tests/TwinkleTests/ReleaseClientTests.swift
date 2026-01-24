@@ -83,4 +83,14 @@ struct ReleaseClientTests {
         #expect(downloading.fractionCompleted == 0.5)
         #expect(completed.fractionCompleted == 1.0)
     }
+
+    @Test("Completed progress equality")
+    func completedEquality() {
+        let c1 = DownloadProgress.completed(savedTo: URL(fileURLWithPath: "/tmp/a.zip"))
+        let c2 = DownloadProgress.completed(savedTo: URL(fileURLWithPath: "/tmp/a.zip"))
+        let c3 = DownloadProgress.completed(savedTo: URL(fileURLWithPath: "/tmp/b.zip"))
+
+        #expect(c1 == c2)
+        #expect(c1 != c3)
+    }
 }

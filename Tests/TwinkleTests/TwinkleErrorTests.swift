@@ -52,4 +52,14 @@ struct TwinkleErrorTests {
         let error: Error = TwinkleError.invalidBundle
         #expect(error.localizedDescription.isEmpty == false)
     }
+
+    @Test("Version mismatch shows expected and actual")
+    func versionMismatch() {
+        let errorWithActual = TwinkleError.versionMismatch(expected: "2.0.0", actual: "1.9.0")
+        #expect(errorWithActual.errorDescription?.contains("2.0.0") == true)
+        #expect(errorWithActual.errorDescription?.contains("1.9.0") == true)
+
+        let errorWithNil = TwinkleError.versionMismatch(expected: "2.0.0", actual: nil)
+        #expect(errorWithNil.errorDescription?.contains("unknown") == true)
+    }
 }
