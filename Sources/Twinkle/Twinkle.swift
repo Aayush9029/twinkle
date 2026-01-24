@@ -21,12 +21,18 @@ public final class Twinkle {
     @Shared(.lastUpdateCheck) private var lastUpdateCheck
     @ObservationIgnored
     @Shared(.ignoredVersion) private var ignoredVersion
+    @ObservationIgnored
+    @Shared(.betaUpdatesEnabled) private var _allowPrereleases
 
     // MARK: - Configuration
     public let owner: String
     public let repo: String
 
-    public var allowPrereleases: Bool = false
+    /// Whether to include prerelease/beta updates (persisted)
+    public var allowPrereleases: Bool {
+        get { _allowPrereleases }
+        set { $_allowPrereleases.withLock { $0 = newValue } }
+    }
 
     // MARK: - State
     public private(set) var state: UpdateState = .idle

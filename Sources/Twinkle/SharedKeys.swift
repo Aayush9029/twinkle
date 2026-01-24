@@ -17,3 +17,10 @@ extension SharedKey where Self == AppStorageKey<String?>.Default {
     }
 }
 
+extension SharedKey where Self == AppStorageKey<Bool>.Default {
+    /// Whether to include prerelease/beta updates
+    public static var betaUpdatesEnabled: Self {
+        Self[.appStorage("twinkle:betaUpdatesEnabled"), default: false]
+    }
+}
+
