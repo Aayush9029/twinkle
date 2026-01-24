@@ -88,3 +88,7 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+
+# E2E Test Fixtures (built during CI)
+E2ETests/Fixtures/
+.build/fixtures/
