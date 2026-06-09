@@ -43,6 +43,15 @@ struct MyApp: App {
 }
 ```
 
+## Demo App
+
+Twinkle includes a small SwiftPM macOS demo target that renders the updater state model and release metadata without performing installation:
+
+```bash
+swift run TwinkleDemo
+swift run TwinkleDemo --smoke-test
+```
+
 ### Check for Updates
 
 ```swift

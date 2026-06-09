@@ -20,7 +20,8 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "Twinkle", targets: ["Twinkle"])
+        .library(name: "Twinkle", targets: ["Twinkle"]),
+        .executable(name: "TwinkleDemo", targets: ["TwinkleDemo"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.10.1"),
@@ -35,6 +36,12 @@ let package = Package(
                 .swiftDependenciesMacros,
                 .identifiedCollections,
                 .swiftSharing
+            ]
+        ),
+        .executableTarget(
+            name: "TwinkleDemo",
+            dependencies: [
+                .twinkle
             ]
         ),
         .testTarget(
