@@ -9,6 +9,7 @@ extension Target.Dependency {
     // External Dependencies
     static let swiftDependencies: Self = .product(name: "Dependencies", package: "swift-dependencies")
     static let swiftDependenciesMacros: Self = .product(name: "DependenciesMacros", package: "swift-dependencies")
+    static let swiftDependenciesTestSupport: Self = .product(name: "DependenciesTestSupport", package: "swift-dependencies")
     static let identifiedCollections: Self = .product(name: "IdentifiedCollections", package: "swift-identified-collections")
     static let swiftSharing: Self = .product(name: "Sharing", package: "swift-sharing")
 }
@@ -40,8 +41,7 @@ let package = Package(
             name: "TwinkleTests",
             dependencies: [
                 .twinkle,
-                .swiftDependencies,
-                .swiftSharing
+                .swiftDependenciesTestSupport
             ]
         )
     ]

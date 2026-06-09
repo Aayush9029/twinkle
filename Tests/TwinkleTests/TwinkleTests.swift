@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Dependencies
+import DependenciesTestSupport
 import IdentifiedCollections
 @testable import Twinkle
 
@@ -345,11 +346,11 @@ struct TwinkleTests {
     @Test("Concurrent check calls are prevented")
     @MainActor
     func concurrentCheckPrevented() async {
-        var fetchCallCount = 0
+        let fetchCallCount = FetchCallCounter()
         await withDependencies {
             $0.releaseClient = ReleaseClient(
                 fetchReleases: { _, _ in
-                    fetchCallCount += 1
+                    await fetchCallCount.increment()
                     try? await Task.sleep(for: .milliseconds(100))
                     return [Release.preview]
                 },
@@ -376,7 +377,7 @@ struct TwinkleTests {
             await task2.value
 
             // Should only have one fetch call despite two check attempts
-            #expect(fetchCallCount == 1)
+            #expect(await fetchCallCount.value == 1)
         }
     }
 
@@ -709,5 +710,17 @@ struct TwinkleTests {
 
             task.cancel()
         }
+    }
+}
+
+private actor FetchCallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    var value: Int {
+        count
     }
 }

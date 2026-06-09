@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Dependencies
+import DependenciesTestSupport
 @testable import Twinkle
 
 @Suite("BundleInfoClient Tests")

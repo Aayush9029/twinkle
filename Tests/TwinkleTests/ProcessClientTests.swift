@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import Dependencies
 @testable import Twinkle
 
 @Suite("ProcessClient Tests")
